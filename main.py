@@ -6,7 +6,7 @@ from huggingface_hub import InferenceClient
 app = FastAPI()
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
-MODEL_ID = "HuggingFaceTB/SmolLM2-135M-Instruct"
+MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
 
 client = None
 
@@ -15,9 +15,7 @@ def get_client():
     if client is None:
         if not HF_TOKEN:
             raise HTTPException(status_code=500, detail="HF_TOKEN تنظیم نشده است.")
-        print("Creating InferenceClient (lazy)...")
         client = InferenceClient(model=MODEL_ID, token=HF_TOKEN)
-        print("InferenceClient created successfully!")
     return client
 
 class ChatRequest(BaseModel):
@@ -30,14 +28,13 @@ def home():
 @app.post("/chat")
 def chat(request: ChatRequest):
     try:
-        inference_client = get_client()
-        response = inference_client.chat_completion(
+        c = get_client()
+        response = c.chat_completion(
             messages=[{"role": "user", "content": request.message}],
-            max_tokens=100,
+            max_tokens=200,
             temperature=0.7
         )
-        reply = response.choices[0].message.content
-        return {"response": reply}
+        return {"response": response.choices[0].message.content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"خطا: {str(e)}")
 
