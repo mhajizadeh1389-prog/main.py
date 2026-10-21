@@ -6,8 +6,8 @@ from huggingface_hub import hf_hub_download
 
 app = FastAPI()
 
-MODEL_REPO = "HuggingFaceTB/SmolLM2-135M-Instruct-GGUF"
-MODEL_FILE = "smollm2-135m-instruct-q4_k_m.gguf"
+MODEL_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF"
+MODEL_FILE = "SmolLM2-135M-Instruct-Q4_K_M.gguf"
 
 print("Downloading and loading model...")
 model_path = hf_hub_download(repo_id=MODEL_REPO, filename=MODEL_FILE)
