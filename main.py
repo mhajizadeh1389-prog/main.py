@@ -12,18 +12,20 @@ MODEL_FILE = "SmolLM2-135M-Instruct-Q4_K_M.gguf"
 llm = None
 
 def load_model():
+    """بارگذاری مدل فقط در اولین درخواست برای جلوگیری از کرش کردن سرور"""
     global llm
     if llm is None:
         print("Downloading and loading model (lazy)...")
         model_path = hf_hub_download(repo_id=MODEL_REPO, filename=MODEL_FILE)
-        llm = Llama(model_path=model_path, n_ctx=256, verbose=False)
+        # کاهش n_ctx برای مصرف رم کمتر
+        llm = Llama(model_path=model_path, n_ctx=128, verbose=False)
         print("Model loaded successfully!")
     return llm
 
 class ChatRequest(BaseModel):
     message: str
 
-# پشتیبانی از GET و HEAD برای صفحه اصلی (رفع مشکل 405)
+# پشتیبانی همزمان از GET و HEAD برای عبور از health check رندر
 @app.api_route("/", methods=["GET", "HEAD"])
 def home():
     return {"message": "سلام! من دستیار هوشمند سالن هستم. سرویس آماده است."}
@@ -34,7 +36,7 @@ def chat(request: ChatRequest):
     prompt = f"<|im_start|>user\n{request.message}<|im_end|>\n<|im_start|>assistant\n"
     output = model(
         prompt,
-        max_tokens=100,
+        max_tokens=80, # کاهش تعداد توکن‌های خروجی
         temperature=0.7,
         stop=["<|im_end|>"],
     )
