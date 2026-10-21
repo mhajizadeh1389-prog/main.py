@@ -9,11 +9,9 @@ app = FastAPI()
 MODEL_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF"
 MODEL_FILE = "SmolLM2-135M-Instruct-Q4_K_M.gguf"
 
-# مدل را در سطح ماژول بارگذاری نمی‌کنیم. یک متغیر سراسری برای نگهداری آن داریم.
 llm = None
 
 def load_model():
-    """این تابع مدل را فقط زمانی بارگذاری می‌کند که برای اولین بار فراخوانی شود."""
     global llm
     if llm is None:
         print("Downloading and loading model (lazy)...")
@@ -25,13 +23,14 @@ def load_model():
 class ChatRequest(BaseModel):
     message: str
 
-@app.get("/")
+# پشتیبانی از GET و HEAD برای صفحه اصلی (رفع مشکل 405)
+@app.api_route("/", methods=["GET", "HEAD"])
 def home():
     return {"message": "سلام! من دستیار هوشمند سالن هستم. سرویس آماده است."}
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    model = load_model() # مدل را (اگر قبلاً بارگذاری نشده) بارگذاری کن
+    model = load_model()
     prompt = f"<|im_start|>user\n{request.message}<|im_end|>\n<|im_start|>assistant\n"
     output = model(
         prompt,
@@ -44,5 +43,4 @@ def chat(request: ChatRequest):
 
 @app.get("/chat")
 def chat_get(message: str):
-    # برای تست از مرورگر، مستقیماً تابع POST را صدا می‌زنیم
     return chat(ChatRequest(message=message))
