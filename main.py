@@ -1,48 +1,41 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from llama_cpp import Llama
-from huggingface_hub import hf_hub_download
+from huggingface_hub import InferenceClient
 
 app = FastAPI()
 
-MODEL_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF"
-MODEL_FILE = "SmolLM2-135M-Instruct-Q4_K_M.gguf"
+# توکن از متغیرهای محیطی خوانده می‌شود (امن‌ترین روش)
+HF_TOKEN = os.environ.get("HF_TOKEN")
+# یک مدل سبک و قدرتمند برای چت
+MODEL_ID = "HuggingFaceTB/SmolLM2-1.7B-Instruct" 
 
-llm = None
-
-def load_model():
-    """بارگذاری مدل فقط در اولین درخواست برای جلوگیری از کرش کردن سرور"""
-    global llm
-    if llm is None:
-        print("Downloading and loading model (lazy)...")
-        model_path = hf_hub_download(repo_id=MODEL_REPO, filename=MODEL_FILE)
-        # کاهش n_ctx برای مصرف رم کمتر
-        llm = Llama(model_path=model_path, n_ctx=128, verbose=False)
-        print("Model loaded successfully!")
-    return llm
+client = InferenceClient(model=MODEL_ID, token=HF_TOKEN)
 
 class ChatRequest(BaseModel):
     message: str
 
-# پشتیبانی همزمان از GET و HEAD برای عبور از health check رندر
 @app.api_route("/", methods=["GET", "HEAD"])
 def home():
-    return {"message": "سلام! من دستیار هوشمند سالن هستم. سرویس آماده است."}
+    return {"message": "سلام! دستیار هوشمند سالن آماده است."}
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    model = load_model()
-    prompt = f"<|im_start|>user\n{request.message}<|im_end|>\n<|im_start|>assistant\n"
-    output = model(
-        prompt,
-        max_tokens=80, # کاهش تعداد توکن‌های خروجی
-        temperature=0.7,
-        stop=["<|im_end|>"],
-    )
-    response_text = output["choices"][0]["text"].strip()
-    return {"response": response_text}
+    if not HF_TOKEN:
+        raise HTTPException(status_code=500, detail="HF_TOKEN تنظیم نشده است.")
+    try:
+        # استفاده از حالت چت برای پاسخ‌های بهتر
+        response = client.chat_completion(
+            messages=[{"role": "user", "content": request.message}],
+            max_tokens=150,
+            temperature=0.7
+        )
+        reply = response.choices[0].message.content
+        return {"response": reply}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"خطا در ارتباط با Hugging Face: {str(e)}")
 
+# برای تست راحت‌تر از مرورگر
 @app.get("/chat")
 def chat_get(message: str):
     return chat(ChatRequest(message=message))
