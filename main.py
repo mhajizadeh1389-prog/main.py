@@ -8,7 +8,17 @@ app = FastAPI()
 HF_TOKEN = os.environ.get("HF_TOKEN")
 MODEL_ID = "HuggingFaceTB/SmolLM2-135M-Instruct"
 
-client = InferenceClient(model=MODEL_ID, token=HF_TOKEN)
+client = None
+
+def get_client():
+    global client
+    if client is None:
+        if not HF_TOKEN:
+            raise HTTPException(status_code=500, detail="HF_TOKEN تنظیم نشده است.")
+        print("Creating InferenceClient (lazy)...")
+        client = InferenceClient(model=MODEL_ID, token=HF_TOKEN)
+        print("InferenceClient created successfully!")
+    return client
 
 class ChatRequest(BaseModel):
     message: str
@@ -19,10 +29,9 @@ def home():
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    if not HF_TOKEN:
-        raise HTTPException(status_code=500, detail="HF_TOKEN تنظیم نشده است.")
     try:
-        response = client.chat_completion(
+        inference_client = get_client()
+        response = inference_client.chat_completion(
             messages=[{"role": "user", "content": request.message}],
             max_tokens=100,
             temperature=0.7
