@@ -11,7 +11,7 @@ MODEL_FILE = "SmolLM2-135M-Instruct-Q4_K_M.gguf"
 
 print("Downloading and loading model...")
 model_path = hf_hub_download(repo_id=MODEL_REPO, filename=MODEL_FILE)
-llm = Llama(model_path=model_path, n_ctx=512, verbose=False)
+llm = Llama(model_path=model_path, n_ctx=256, verbose=False)
 print("Model loaded successfully!")
 
 
@@ -29,9 +29,14 @@ def chat(request: ChatRequest):
     prompt = f"<|im_start|>user\n{request.message}<|im_end|>\n<|im_start|>assistant\n"
     output = llm(
         prompt,
-        max_tokens=150,
+        max_tokens=100,
         temperature=0.7,
         stop=["<|im_end|>"],
     )
     response_text = output["choices"][0]["text"].strip()
     return {"response": response_text}
+
+
+@app.get("/chat")
+def chat_get(message: str):
+    return chat(ChatRequest(message=message))
